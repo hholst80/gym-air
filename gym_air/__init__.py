@@ -23,14 +23,24 @@ for game in ['air_raid', 'alien', 'amidar', 'assault', 'asterix', 'asteroids',
 
         nondeterministic = (game == 'elevator_action')
 
-        id = '{}{}-image-ram-v0'.format(name,
-                                        '' if nondeterministic else
-                                        'Deterministic')
+        id = '{name}-image-ram-v0'.format(name=name)
 
         register(
             id=id,
             entry_point='gym_air.envs:AIREnv',
             kwargs={'game': game, 'frameskip': frameskip,
+                    'repeat_action_probability': 0},
+            tags={'wrapper_config.TimeLimit.max_episode_steps': 100000},
+            nondeterministic=nondeterministic,
+        )
+
+        id = '{name}-image-only-v0'.format(name=name)
+
+        register(
+            id=id,
+            entry_point='gym_air.envs:AIREnv',
+            kwargs={'game': game, 'frameskip': frameskip,
+                    'use_tuple': False,
                     'repeat_action_probability': 0},
             tags={'wrapper_config.TimeLimit.max_episode_steps': 100000},
             nondeterministic=nondeterministic,

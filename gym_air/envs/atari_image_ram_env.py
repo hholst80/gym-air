@@ -16,17 +16,10 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def to_ram(ale):
-    ram_size = ale.getRAMSize()
-    ram = np.zeros((ram_size), dtype=np.uint8)
-    ale.getRAM(ram)
-    return ram
-
-
 class AIREnv(gym.Env, utils.EzPickle):
     metadata = {'render.modes': ['human', 'rgb_array']}
 
-    def __init__(self, game='pong', frameskip=(2, 5),
+    def __init__(self, game='pong', frameskip=(2, 5), use_tuple=True,
                  repeat_action_probability=0.):
         """Frameskip should be either a tuple (indicating a random range to
         choose from, with the top value exclude), or an int."""
@@ -62,7 +55,13 @@ class AIREnv(gym.Env, utils.EzPickle):
         obs_image = spaces.Box(low=0, high=255, shape=(screen_height,
                                                        screen_width, 3))
         obs_ram = spaces.Box(low=0, high=255, shape=(128,))
-        self.observation_space = spaces.Tuple((obs_image, obs_ram))
+
+        if use_tuple:
+            self.observation_space = spaces.Tuple((obs_image, obs_ram))
+        else:
+            self.observation_space = obs_image
+
+        self._use_tuple = use_tuple
 
     def _seed(self, seed=None):
         self.np_random, seed1 = seeding.np_random(seed)
@@ -86,23 +85,34 @@ class AIREnv(gym.Env, utils.EzPickle):
                                                self.frameskip[1])
         for _ in range(num_steps):
             reward += self.ale.act(action)
-        ob = self._get_obs()
 
-        return ob, reward, self.ale.game_over(), {"ale.lives": self.ale.lives()}
+        obs = self._get_obs()
+
+        done = self.ale.game_over()
+
+        info = ({'ale.lives': self.ale.lives(), 'ram': self._get_ram()} if not
+                self._use_tuple else {'ale.lives': self.ale.lives()})
+
+        return obs, reward, done, info
 
     def _get_image(self):
-        self.ale.getScreenRGB(self._buffer)  # says rgb but actually bgr
-        return self._buffer[:, :, [2, 1, 0]]
+        return self.ale.getScreenRGB2()
 
     def _get_ram(self):
-        return to_ram(self.ale)
+        ram_size = self.ale.getRAMSize()
+        ram = np.zeros((ram_size), dtype=np.uint8)
+        self.ale.getRAM(ram)
+        return ram
 
     @property
     def _n_actions(self):
         return len(self._action_set)
 
     def _get_obs(self):
-        return (self._get_image(), self._get_ram())
+        if self._use_tuple:
+            return (self._get_image(), self._get_ram())
+        else:
+            return self._get_image()
 
     # return: (states, observations)
     def _reset(self):
