@@ -23,6 +23,9 @@ for game in ['air_raid', 'alien', 'amidar', 'assault', 'asterix', 'asteroids',
 
         nondeterministic = (game == 'elevator_action')
 
+        if not nondeterministic:
+            name += "Deterministic"
+
         id = '{name}-image-ram-v0'.format(name=name)
 
         register(
